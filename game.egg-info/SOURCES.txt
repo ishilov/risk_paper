@@ -1,0 +1,10 @@
+setup.py
+game/__init__.py
+game/gradient.py
+game/player.py
+game/stackelberg.py
+game.egg-info/PKG-INFO
+game.egg-info/SOURCES.txt
+game.egg-info/dependency_links.txt
+game.egg-info/requires.txt
+game.egg-info/top_level.txt
