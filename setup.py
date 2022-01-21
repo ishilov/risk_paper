@@ -1,10 +1,11 @@
 from setuptools import setup
 
 setup(
-    name='game',
-    version='0.0.2',
-    packages=['game'],
+    name='supplement_package',
+    version='0.0.1',
+    packages=['supplement_package'],
     install_requires=[
         'pandas',
+        'numpy',
     ],
 )
