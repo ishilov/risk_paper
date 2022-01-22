@@ -1,3 +1,6 @@
+import numpy as np
+import random
+
 class VariablesStorage:
 
    connection_matrix = [[0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1],
@@ -165,3 +168,30 @@ class VariablesStorage:
    def update(self, d_target, g_res):
       self.d_target = d_target
       self.g_res = g_res
+
+class VariablesGenerator:
+
+#    def __init__(self,
+#                scenario_amount: int,
+##                agents_amount = 25,
+#                generate_new = False,
+#                ) -> None:
+        
+#        self.scenario_amount = scenario_amount
+#        self.agents_amount = agents_amount
+#        self.generate_new = generate_new
+    @staticmethod
+    def generator(scenario_amount,
+                storage: VariablesStorage,
+                agents_amount = 25,
+                generate_new = False,
+                ) -> dict:
+
+        #storage = variables_storage.VariablesStorage(scenario_amount)
+
+        if generate_new:
+            d_target = [[random.uniform(0,4) for j in range(scenario_amount)] for i in range(agents_amount)]
+            g_res = [[random.uniform(0,3) for j in range(scenario_amount)] for i in range(agents_amount)]
+            storage.update(d_target, g_res)
+        
+
