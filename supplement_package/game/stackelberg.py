@@ -38,9 +38,16 @@ class StackelbergPlayer(Player):
         self.j_max = insurance_bound
 
         self.j = np.zeros_like(self.probabilities, dtype= float)
+        self.w = np.zeros_like(self.probabilities, dtype= float)
+
+        self.grad_j = np.zeros_like(self.probabilities, dtype= float)
+        self.grad_w = np.zeros_like(self.probabilities, dtype= float)
+
+        self.plot_j = [[] for i in range(len(self.probabilities))]
+        self.plot_w = [[] for i in range(len(self.probabilities))]        
 
     def risk_utility(self) -> np.ndarray:
-        return self.utility() - self.j
+        return self.utility() - self.j - self.w
 
 
 class StackelbergGradientComputation(GradientComputation):
@@ -48,28 +55,31 @@ class StackelbergGradientComputation(GradientComputation):
         super().__init__()
 
     @staticmethod
-    def utility_contr_grad(player: StackelbergPlayer) -> dict:
+    def risk_utility_grad(player: StackelbergPlayer, min_ra: float) -> dict:
         update_eta = 1
 
         update_u = np.array([proba/(1-player.risk_aversion) for proba in player.probabilities])
 
         update_j = np.array([-player.alpha[proba] for proba in player.probabilities_ind])
 
+        update_w = np.array([proba/(1 - min_ra) for proba in player.probabilities])
+
         return {'update_eta': update_eta,
                 'update_u': update_u,
-                'update_j': update_j}
+                'update_j': update_j,
+                'update_w': update_w}
 
     @staticmethod
     def stackelberg_penalty_residual(player: StackelbergPlayer) -> dict:
         """This function returns a dict with the keys for the names of the updates and the values are updates themselves.
         The penalty function considered corresponds to the constraint
         
-        \Pi^w_n - J^w_n - eta_n - u^w_n <=0
+        \Pi^t_n - J^t_n - W^t_n - eta_n - u^t_n <=0
 
-        Where \Pi^w_n is the utility (initial one) of agent n in the scenario w"""
+        Where \Pi^t_n is the utility (initial one) of agent n in the scenario t"""
 
-        constraint = np.array([player.risk_utility()[proba] - player.j - player.eta - player.u[proba] 
-                            if player.risk_utility()[proba] - player.j - player.eta - player.u[proba] >=0 else 0 for proba in player.probabilities_ind])
+        constraint = np.array([player.risk_utility()[proba] - player.eta - player.u[proba] 
+                            if player.risk_utility()[proba] - player.eta - player.u[proba] >=0 else 0 for proba in player.probabilities_ind])
 
         update_d = 2 * player.a_tilde * (player.D - player.D_target) * constraint
 
@@ -77,21 +87,24 @@ class StackelbergGradientComputation(GradientComputation):
 
         update_eta = sum(-1 * constraint)
 
-        update_u = -1 * constraint
+        update_u = - 1 * constraint
 
         update_q = np.zeros_like(player.q, dtype= float)
 
-        update_j = 1 * constraint
-
         for neighbor in range(len(player.connections)):
             update_q[neighbor] = player.trading_cost[neighbor]*constraint if player.connections[neighbor] else np.zeros_like(player.probabilities_ind)
+
+        update_j = - 1 * constraint
+
+        update_w = - 1 * constraint
 
         return {'update_d': update_d,
                 'update_g': update_g,
                 'update_eta': update_eta,
                 'update_u': update_u,
                 'update_q': update_q,
-                'update_j' :update_j}
+                'update_j' :update_j,
+                'update_w' : update_w}
 
     @staticmethod
     def penalty_jmin(player: StackelbergPlayer) -> np.ndarray:
@@ -101,6 +114,16 @@ class StackelbergGradientComputation(GradientComputation):
     def penalty_jmax(player: StackelbergPlayer) -> np.ndarray:
         return np.array([player.j[proba] - player.j_max if player.j[proba] - player.j_max >=0 else 0 for proba in player.probabilities_ind])
 
+    @staticmethod
+    def penalty_risk_balance(players: list) -> np.ndarray:
+        """This function returns the violation of risk balance condition for each scenario:
+        \sum_{t \in T} W^t_n """
+        update_w = np.zeros_like(players[0].probabilities)
+        for proba in players[0].probabilities_ind:
+            for player in players:
+                update_w[proba] += player.w
+
+        return update_w
 
 class InsuranceCompany():
 
