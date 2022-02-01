@@ -23,6 +23,7 @@ class StackelbergPlayer(Player):
                 trading_cost: list, 
                 connections: list,
                 alpha: list,
+                gamma: list,
                 insurance_bound: list) -> None:
 
         super().__init__(id, 
@@ -35,6 +36,7 @@ class StackelbergPlayer(Player):
                         risk_aversion, kappa, trading_cost, connections)
 
         self.alpha = alpha
+        self.gamma = gamma
         self.j_max = insurance_bound
 
         self.j = np.zeros_like(self.probabilities, dtype= float)
@@ -121,7 +123,7 @@ class StackelbergGradientComputation(GradientComputation):
         update_w = np.zeros_like(players[0].probabilities)
         for proba in players[0].probabilities_ind:
             for player in players:
-                update_w[proba] += player.w
+                update_w[proba] += player.w[proba]
 
         return update_w
 

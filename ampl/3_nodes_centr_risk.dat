@@ -1,0 +1,4 @@
+data;
+
+set nodes := n_0 n_1 n_2;
+set probas := p_0 p_1 p_2;
