@@ -107,6 +107,32 @@ class VariablesStorage:
    0.9709990121584245,
    0.6252012319264099]
 
+   B = [0.681966804864529,
+   0.7746852016085002,
+   0.9019122118451021,
+   0.9965700161232702,
+   0.4487674472288763,
+   0.810181637297551,
+   0.4155297320273992,
+   0.2881720765848115,
+   0.055641463798503765,
+   0.6910118969718777,
+   0.6950350562793148,
+   0.33812015580181076,
+   0.7614345036194348,
+   0.9626239765838843,
+   0.7066941440607128,
+   0.4563392347025941,
+   0.07012745938412313,
+   0.5560042924763157,
+   0.32751998485699096,
+   0.2269998637080286,
+   0.05563010644682165,
+   0.8804572787130538,
+   0.3054582879416763,
+   0.36478658287137056,
+   0.8151591321682914]
+
    D = [0.22547321395357256,
    0.661788548751287,
    0.9939477716394078,
@@ -162,12 +188,12 @@ class VariablesStorage:
    def __init__(self, scenario_amount: int) -> None:
       self.scenario_amount = scenario_amount
 
-      self.d_target = []
-      self.g_res = []
+      self.d_target = {}
+      self.g_res = {}
 
-   def update(self, d_target, g_res):
-      self.d_target = d_target
-      self.g_res = g_res
+   def update(self, d_target, g_res, amount_of_scenarios):
+      self.d_target.update({amount_of_scenarios : d_target})
+      self.g_res.update({amount_of_scenarios : g_res})
 
 class VariablesGenerator:
 
@@ -192,6 +218,6 @@ class VariablesGenerator:
         if generate_new:
             d_target = [[random.uniform(0,4) for j in range(scenario_amount)] for i in range(agents_amount)]
             g_res = [[random.uniform(0,3) for j in range(scenario_amount)] for i in range(agents_amount)]
-            storage.update(d_target, g_res)
+            storage.update(d_target, g_res, scenario_amount)
         
 

@@ -1,4 +1,4 @@
-from game.player import Player
+from supplement_package.game.player import Player
 import numpy as np
 from typing import List
 
@@ -89,7 +89,9 @@ class GradientComputation:
 
         return {'update_d' : update_d,
                 'update_g' : update_g,
-                'update_q' : update_q}
+                'update_q' : update_q,
+                'violation' : player.D - player.G_res - player.G - player.q_sum()
+                }
 
 
     @staticmethod

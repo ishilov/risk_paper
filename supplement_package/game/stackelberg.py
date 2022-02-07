@@ -1,5 +1,5 @@
-from game.player import Player
-from game.gradient import GradientComputation
+from supplement_package.game.player import Player
+from supplement_package.game.gradient import GradientComputation
 
 import numpy as np
 
@@ -106,7 +106,8 @@ class StackelbergGradientComputation(GradientComputation):
                 'update_u': update_u,
                 'update_q': update_q,
                 'update_j' :update_j,
-                'update_w' : update_w}
+                'update_w' : update_w,
+                'violation' : constraint}
 
     @staticmethod
     def penalty_jmin(player: StackelbergPlayer) -> np.ndarray:
