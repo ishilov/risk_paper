@@ -32,7 +32,7 @@ param G_d {i in nodes, j in probas};
 var D {i in nodes, j in probas} >= D_min[i], <= D_max[i];
 var G {i in nodes, j in probas} >= G_min[i], <= G_max[i];
 var Q {i in nodes, j in probas};
-var u {i in nodes, j in probas};
+var u {i in nodes, j in probas} >=0;
 var eta {i in nodes};
 var quant {i in nodes, j in nodes, k in probas}, >= -kappa[i,j], <= kappa[i,j];
 var W {i in nodes, j in probas};
@@ -52,16 +52,10 @@ minimize Total_cost:
     );
 	
 subject to Trade {i in nodes, j in nodes, k in probas}:
-	quant[i,j,k] + quant[j,i,k] <= 0;
+	quant[i,j,k] + quant[j,i,k] = 0;
 	
 subject to Balance {i in nodes, j in probas}:
-	D[i,j] == G[i,j] + G_d[i,j] + sum{k in nodes} quant[i,k,j];
-
-subject to trading_sum {i in nodes, j in probas}:
-	Q[i,j] = sum{k in nodes} quant[i,k,j];
-	
-subject to U {i in nodes, j in probas}:
-	u[i,j] >= 0 ;
+	D[i,j] - G[i,j] - G_d[i,j] - sum{k in nodes} quant[i,k,j] = 0;
 
 subject to risk_balance {j in probas}: 
     sum {i in nodes} W[i,j] = 0;
@@ -71,4 +65,4 @@ subject to max_insurance {i in nodes, j in probas}:
 	
 subject to Epigraph {i in nodes, j in probas}:
 	a_t[i]*(D[i,j]-D_t[i,j])^2 - b_t[i] + 0.5*a[i]*G[i,j]*G[i,j] +  b[i]*G[i,j] + d[i]
-	+ sum{k in nodes} cost[i,k] * quant [i,k,j] - eta[i] - W[i,j] - J[i,j] <= u[i,j];
+	+ sum{k in nodes} cost[i,k] * quant [i,k,j] - eta[i] - W[i,j] - J[i,j] - u[i,j] <=0;

@@ -1,11 +1,6 @@
 import numpy as np
 
 class Player:
-
-    probabilities = [0.333, 0.333, 0.333]
-    community_size = 0
-
-
     def __init__(self, 
             id: int,
             D_target: list, 
@@ -22,7 +17,8 @@ class Player:
             risk_aversion: float,
             kappa: list, 
             trading_cost: list,
-            connections: list
+            connections: list,
+            probabilities: list,
             ) -> None:
 
         self.id = id #Simply a serial number of the agent assigned on the first initialization
@@ -39,8 +35,9 @@ class Player:
         self.G_min = G_min
         self.G_max = G_max
         self.risk_aversion = risk_aversion
+        self.probabilities = probabilities
 
-        self.probabilities_ind = [i for i in range(len(Player.probabilities))]
+        self.probabilities_ind = [i for i in range(len(self.probabilities))]
 
 
         self.trading_cost = trading_cost

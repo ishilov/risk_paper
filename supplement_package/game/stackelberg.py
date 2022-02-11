@@ -22,6 +22,7 @@ class StackelbergPlayer(Player):
                 kappa: list, 
                 trading_cost: list, 
                 connections: list,
+                probabilities: list,
                 alpha: list,
                 gamma: list,
                 insurance_bound: list) -> None:
@@ -33,7 +34,7 @@ class StackelbergPlayer(Player):
                         a_tilde, b_tilde, 
                         D_min, D_max, 
                         G_min, G_max, 
-                        risk_aversion, kappa, trading_cost, connections)
+                        risk_aversion, kappa, trading_cost, connections, probabilities)
 
         self.alpha = alpha
         self.gamma = gamma
