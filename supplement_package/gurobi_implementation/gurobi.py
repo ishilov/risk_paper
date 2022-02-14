@@ -1,18 +1,8 @@
 import gurobipy as gp
+from pygments import lex
 
 class Gurobi:
 
-    def __init__(self,
-                agents,
-                model,
-                solution_type = 'centralized') -> None:
-        
-        self.agents = agents
-        self.model = model
-        
-        if solution_type in ('centralized'):
-            self.solution_type = solution_type
-    
     @staticmethod
     def gurobi_add_generation_var(agent, model):
 
@@ -198,6 +188,69 @@ class Gurobi:
                             name = f'Risk trading balance for proba {proba}')
 
         model.update()
+    
+
+class BRGS:
+
+    @staticmethod
+    def pass_parameters(agent, agents):
+        for agent_2 in agents:
+            if agent.connections[agent_2.id]:
+                agent.q_others.update({agent_2.id : agent_2.q[agent.id]})
+            
+            agent.w_others.update({agent_2.id : agent_2.w})
+
+    @staticmethod
+    def extract_parameters(agent, agents, model):
+        for proba in agent.probabilities_ind:
+            agent.G[proba] = model.getVarByName(f'G_{agent.id}_{proba}').X
+            agent.D[proba] = model.getVarByName(f'D_{agent.id}_{proba}').X
+            agent.j[proba] = model.getVarByName(f'J_{agent.id}_{proba}').X
+            agent.w[proba] = model.getVarByName(f'W_{agent.id}_{proba}').X
+            agent.u[proba] = model.getVarByName(f'u_{agent.id}_{proba}').X
+
+            for agent_2 in agents:
+                if agent.connections[agent_2.id]:
+                    agent.q[agent_2.id][proba] = model.getVarByName(f'q_{agent.id}_{agent_2.id}_{proba}').X
+
+        agent.eta = model.getVarByName(f'eta_{agent.id}').X
+
+    @staticmethod
+    def brgs_gurobi_set_bilateral_trading_constr(agent, agents, model):
+        for agent_2 in agents:
+            if agent.connections[agent_2.id]:
+                for proba in agent.probabilities_ind:
+                    model.addConstr(model.getVarByName(f'q_{agent.id}_{agent_2.id}_{proba}')  
+                                    + agent.q_others[agent_2][proba] == 0, 
+                                    name = f'Bilateral trading for pair ({agent.id}, {agent_2.id}) proba {proba}')
+
+        model.update()
+
+    @staticmethod
+    def brgs_gurobi_set_risk_trading_constr(agent, model):        
+        for proba in agent.probabilities_ind:
+            lExpr = gp.LinExpr()
+
+            lExpr.add(model.getVarByName(f'W_{agent.id}_{proba}'))
+            sum_others = sum(agent.w_others.values())
+
+            model.addConstr(lExpr + sum_others == 0,
+                            name = f'Risk trading balance for agent {agent.id} for proba {proba}')
+
+        model.update()
+
+
+class GurobiSolution(Gurobi, BRGS):
+    def __init__(self, agents, model, solution_type='centralized', agent = None) -> None:
+
+        self.agents = agents
+        self.model = model
+        
+        if solution_type in ('centralized', 'BRGS'):
+            self.solution_type = solution_type
+
+            if solution_type == 'BRGS':
+                self.agent = agent
 
     def build_model(self):
         if self.solution_type == 'centralized':
@@ -222,14 +275,23 @@ class Gurobi:
                 obj.add(Gurobi.gurobi_set_objective(agent, self.model, two_level=True))
 
             self.model.setObjective(obj, gp.GRB.MINIMIZE)
-            self.model.update()
-    
+            
+        if self.solution_type == 'BRGS': 
+            Gurobi.gurobi_add_demand_var(self.agent, self.model)
+            Gurobi.gurobi_add_generation_var(self.agent, self.model)
+            Gurobi.gurobi_add_energy_trading_var(self.agent, self.agents, self.model)
+            Gurobi.gurobi_add_eta_var(self.agent, self.model)
+            Gurobi.gurobi_add_fin_contracts_var(self.agent, self.model)
+            Gurobi.gurobi_add_insurance_var(self.agent, self.model)
+            Gurobi.gurobi_add_residual_var(self.agent, self.model)
 
-class BRGS(Gurobi):
-    def __init__(self, agents, model, solution_type='centralized') -> None:
-        super().__init__(agents, model, solution_type)
+            BRGS.brgs_gurobi_set_bilateral_trading_constr(self.agent, self.model)
+            BRGS.brgs_gurobi_set_risk_trading_constr(self.agent, self.model)
+            Gurobi.gurobi_set_residual_constr(agent, self.agents, self.model)
+            Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
 
-    def pass_parameter():
-        pass
+            obj = gp.LinExpr()
+            obj.add(Gurobi.gurobi_set_objective(self.agent, self.model, two_level=True))
+            self.model.setObjective(obj, gp.GRB.MINIMIZE)
 
-    
+        self.model.update()

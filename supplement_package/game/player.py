@@ -59,6 +59,8 @@ class Player:
         self.grad_u = np.zeros(len(self.probabilities_ind))
         self.grad_q = np.zeros((self.community_size, len(self.probabilities_ind)))
 
+        self.q_others = {}
+        self.w_others = {}
 
         self.plot_d = [[] for i in range(len(self.probabilities))]
         self.plot_g = [[] for i in range(len(self.probabilities))]
