@@ -221,18 +221,18 @@ class BRGS:
             if agent.connections[agent_2.id]:
                 for proba in agent.probabilities_ind:
                     model.addConstr(model.getVarByName(f'q_{agent.id}_{agent_2.id}_{proba}')  
-                                    + agent.q_others[agent_2][proba] == 0, 
+                                    + agent.q_others[agent_2.id][proba] <= 0, 
                                     name = f'Bilateral trading for pair ({agent.id}, {agent_2.id}) proba {proba}')
 
         model.update()
 
     @staticmethod
-    def brgs_gurobi_set_risk_trading_constr(agent, model):        
+    def brgs_gurobi_set_risk_trading_constr(agent, agents, model):        
         for proba in agent.probabilities_ind:
             lExpr = gp.LinExpr()
 
             lExpr.add(model.getVarByName(f'W_{agent.id}_{proba}'))
-            sum_others = sum(agent.w_others.values())
+            sum_others = sum([agent.w_others[agent_2.id][proba] for agent_2 in agents])
 
             model.addConstr(lExpr + sum_others == 0,
                             name = f'Risk trading balance for agent {agent.id} for proba {proba}')
@@ -285,10 +285,10 @@ class GurobiSolution(Gurobi, BRGS):
             Gurobi.gurobi_add_insurance_var(self.agent, self.model)
             Gurobi.gurobi_add_residual_var(self.agent, self.model)
 
-            BRGS.brgs_gurobi_set_bilateral_trading_constr(self.agent, self.model)
-            BRGS.brgs_gurobi_set_risk_trading_constr(self.agent, self.model)
-            Gurobi.gurobi_set_residual_constr(agent, self.agents, self.model)
-            Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
+            BRGS.brgs_gurobi_set_bilateral_trading_constr(self.agent, self.agents, self.model)
+            BRGS.brgs_gurobi_set_risk_trading_constr(self.agent, self.agents, self.model)
+            Gurobi.gurobi_set_residual_constr(self.agent, self.agents, self.model)
+            Gurobi.gurobi_set_SD_balance_constr(self.agent, self.agents, self.model)
 
             obj = gp.LinExpr()
             obj.add(Gurobi.gurobi_set_objective(self.agent, self.model, two_level=True))
