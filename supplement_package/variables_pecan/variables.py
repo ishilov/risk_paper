@@ -195,6 +195,9 @@ class VariablesStorage:
       self.d_target.update({amount_of_scenarios : d_target})
       self.g_res.update({amount_of_scenarios : g_res})
 
+   def save(self):
+      pass
+
 class VariablesGenerator:
 
 #    def __init__(self,
@@ -211,7 +214,7 @@ class VariablesGenerator:
                 storage: VariablesStorage,
                 agents_amount = 25,
                 generate_new = False,
-                ) -> dict:
+                ) -> None:
 
         #storage = variables_storage.VariablesStorage(scenario_amount)
 
