@@ -183,10 +183,10 @@ class BasicFunctions:
         res = [torch.tensor(0, dtype=float) for proba in agent.probabilities_ind]
 
         for proba in agent.probabilities_ind:
-            res[proba] =    (agent.D[proba] 
-                                - agent.G[proba] 
-                                - agent.G_res[proba] 
-                                - BasicFunctions.q_sum(agent, weights=False)[proba])
+            res[proba] = (agent.D[proba] 
+                        - agent.G[proba] 
+                        - agent.G_res[proba] 
+                        - BasicFunctions.q_sum(agent, weights=False)[proba])**2
 
         return res
 

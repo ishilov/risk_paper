@@ -276,12 +276,18 @@ class GurobiSolution(Gurobi, BRGS):
         if self.solution_type == 'test':
             for agent in self.agents:
                 Gurobi.gurobi_add_generation_var(agent, self.model)
+                Gurobi.gurobi_add_demand_var(agent, self.model)
+                Gurobi.gurobi_add_energy_trading_var(agent, self.agents, self.model)
+
+            for agent in self.agents:
+                Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
 
             obj = gp.QuadExpr()
             for agent in self.agents:
                 for proba in agent.probabilities_ind:
-                
+                    obj.add(Gurobi.gurobi_quadr_demand(agent, proba, self.model))
                     obj.add(Gurobi.gurobi_quadr_generation(agent, proba, self.model))
+                    obj.add(Gurobi.gurobi_trading_sum_calc(agent, proba, self.agents, self.model, weights=True))
 
             self.model.setObjective(obj, gp.GRB.MINIMIZE)
 
