@@ -281,6 +281,7 @@ class GurobiSolution(Gurobi, BRGS):
 
             for agent in self.agents:
                 Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_bilateral_trading_constr(agent, self.agents, self.model)
 
             obj = gp.QuadExpr()
             for agent in self.agents:
