@@ -332,8 +332,8 @@ class GurobiSolution(Gurobi, BRGS):
                 Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
                 
             Gurobi.gurobi_set_risk_trading_constr(self.agents, self.model)
-            Gurobi.gurobi_add_gamma_price_var(self.model, self.agents[0].probabilities_ind)
-            
+
+        
             if not price_as_var:
                 obj = gp.LinExpr()
                 for agent in self.agents:
@@ -342,6 +342,7 @@ class GurobiSolution(Gurobi, BRGS):
             else:
                 obj = gp.QuadExpr()
                 for agent in self.agents:
+                    Gurobi.gurobi_add_gamma_price_var(self.model, self.agents[0].probabilities_ind)
                     obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
 
             self.model.setObjective(obj, gp.GRB.MINIMIZE)

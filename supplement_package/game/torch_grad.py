@@ -41,6 +41,8 @@ class TorchPlayer:
 
         self.plot_j = [[] for i in range(len(self.probabilities))]
         self.plot_w = [[] for i in range(len(self.probabilities))] 
+        self.plot_u = [[] for i in range(len(self.probabilities))]
+        self.plot_eta = [] 
 
         self.id = id #Simply a serial number of the agent assigned on the first initialization
 
@@ -57,8 +59,7 @@ class TorchPlayer:
         self.G_max = G_max
         self.risk_aversion = risk_aversion
 
-        self.q_others = {} #keys: agents' ids, values: agents' qs
-        self.w_others = {} #keys: agents' ids, values: agents' ws
+        self.w_others = {num: [0 for proba in self.probabilities_ind] for num in range(self.community_size)} #keys: agents' ids, values: agents' ws
 
         self.q_others = {num: [[0 for proba in self.probabilities_ind] for i in range(self.community_size)] for num in range(self.community_size)}
 
@@ -73,10 +74,10 @@ class TorchPlayer:
         self.D = torch.zeros(len(self.probabilities_ind), requires_grad=True)
         self.q = torch.zeros((self.community_size, len(self.probabilities_ind)), requires_grad=True)
         
-        #self.j = torch.zeros(len(self.probabilities), dtype= float, requires_grad=True)
-        #self.w = torch.zeros(len(self.probabilities), dtype= float, requires_grad=True)
-        #self.eta = torch.tensor(0, dtype=float, requires_grad=True)
-        #self.u = torch.zeros(len(self.probabilities_ind), requires_grad=True)
+        self.j = torch.zeros(len(self.probabilities), dtype= float, requires_grad=True)
+        self.w = torch.zeros(len(self.probabilities), dtype= float, requires_grad=True)
+        self.eta = torch.tensor(0, dtype=float, requires_grad=True)
+        self.u = torch.zeros(len(self.probabilities_ind), requires_grad=True)
 
         self.plot_d = [[] for i in range(len(self.probabilities))]
         self.plot_g = [[] for i in range(len(self.probabilities))]
@@ -224,3 +225,64 @@ class BasicFunctions:
                     res[agent_2][proba] = (agent.q[agent_2][proba] + agent.q_others[agent_2][agent.id][proba]) ** 2
 
         return res 
+
+
+class RiskProblemFunctions:
+
+    @staticmethod
+    def penalty_residual(agent: TorchPlayer) -> list:
+        res = [torch.tensor(0, dtype=float) for proba in agent.probabilities_ind]
+
+        for proba in agent.probabilities_ind:
+            res[proba] = ((BasicFunctions.utility(agent)[proba] - agent.w[proba] - agent.eta - agent.u[proba]) ** 2 
+                            if (BasicFunctions.utility(agent)[proba] - agent.w[proba] - agent.eta - agent.u[proba]) > 0 else torch.tensor(0, dtype = float))
+
+        return res
+
+    @staticmethod
+    def insurance_bound_lower(agent: TorchPlayer) -> list:
+        res = [torch.tensor(0, dtype=float) for proba in agent.probabilities_ind]
+
+        for proba in agent.probabilities_ind:
+            res[proba] = agent.j[proba] ** 2 if agent.j[proba] <0 else torch.tensor(0, dtype=float)
+
+        return res
+
+    @staticmethod
+    def insurance_bound_upper(agent: TorchPlayer) -> list:
+        res = [torch.tensor(0, dtype=float) for proba in agent.probabilities_ind]
+
+        for proba in agent.probabilities_ind:
+            res[proba] = (agent.j[proba] - agent.j_max) ** 2 if (agent.j[proba] - agent.j_max) > 0 else torch.tensor(0, dtype=float)
+
+        return res
+
+    @staticmethod
+    def residual_bound(agent: TorchPlayer) -> list:
+        res = [torch.tensor(0, dtype=float) for proba in agent.probabilities_ind]
+
+        for proba in agent.probabilities_ind:
+            res[proba] = agent.u[proba] ** 2 if agent.u[proba] < 0 else torch.tensor(0, dtype=float)
+
+        return res 
+
+    @staticmethod
+    def contract_trading_bound(agent: TorchPlayer) -> list:
+        res = [torch.tensor(0, dtype=float) for proba in agent.probabilities_ind]
+
+        for proba in agent.probabilities_ind:
+            for agent_2 in range(agent.community_size):
+                res[proba] += agent.w_others[agent_2][proba]
+
+            res[proba] = res[proba] ** 2
+
+        return res
+
+    @staticmethod
+    def risk_utility(agent: TorchPlayer):
+        insurance_term = sum([agent.j[proba] * agent.alpha[proba] for proba in agent.probabilities_ind])
+        contracts_term = sum([agent.w[proba] * agent.gamma[proba] for proba in agent.probabilities_ind])
+        residual_term = 1 / (1 - agent.risk_aversion) * sum([agent.u[proba] * agent.probabilities[proba] for proba in agent.probabilities_ind])
+        eta_term = agent.eta
+
+        return insurance_term + contracts_term + residual_term + eta_term
