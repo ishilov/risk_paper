@@ -112,6 +112,17 @@ class Gurobi:
 
         return lExpr
 
+    @staticmethod
+    def gurobi_set_objective_quadr_test(agent, model):
+        qExpr = gp.QuadExpr()
+
+        for proba_ind, proba in enumerate(agent.probabilities):
+            qExpr.add(model.getVarByName(f'W_{agent.id}_{proba_ind}') * model.getVarByName(f'W_{agent.id}_{proba_ind}') * agent.gamma[proba_ind] 
+                        + model.getVarByName(f'J_{agent.id}_{proba_ind}') * model.getVarByName(f'J_{agent.id}_{proba_ind}') * agent.alpha[proba_ind]
+                        + model.getVarByName(f'u_{agent.id}_{proba_ind}') * model.getVarByName(f'u_{agent.id}_{proba_ind}') * proba / (1 - agent.risk_aversion))
+
+        return qExpr
+
     
     @staticmethod
     def gurobi_trading_sum_calc(agent, proba, agents, model, weights = False):
@@ -266,7 +277,7 @@ class GurobiSolution(Gurobi, BRGS):
         self.agents = agents
         self.model = model
         
-        if solution_type in ('centralized', 'BRGS', 'initial', 'test'):
+        if solution_type in ('centralized', 'BRGS', 'initial', 'test', 'quadratic_test'):
             self.solution_type = solution_type
 
             if solution_type == 'BRGS':
@@ -333,6 +344,7 @@ class GurobiSolution(Gurobi, BRGS):
                 
             Gurobi.gurobi_set_risk_trading_constr(self.agents, self.model)
 
+            epsilon = 1e-4
         
             if not price_as_var:
                 obj = gp.LinExpr()
@@ -344,6 +356,33 @@ class GurobiSolution(Gurobi, BRGS):
                 for agent in self.agents:
                     Gurobi.gurobi_add_gamma_price_var(self.model, self.agents[0].probabilities_ind)
                     obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
+
+            self.model.setObjective(obj, gp.GRB.MINIMIZE)
+
+        if self.solution_type == 'quadratic_test':
+            for agent in self.agents:
+                Gurobi.gurobi_add_demand_var(agent, self.model)
+                Gurobi.gurobi_add_generation_var(agent, self.model)
+                Gurobi.gurobi_add_energy_trading_var(agent, self.agents, self.model)
+                Gurobi.gurobi_add_eta_var(agent, self.model)
+                Gurobi.gurobi_add_fin_contracts_var(agent, self.model)
+                Gurobi.gurobi_add_insurance_var(agent, self.model)
+                Gurobi.gurobi_add_residual_var(agent, self.model)
+                
+
+            for agent in self.agents:
+                Gurobi.gurobi_set_bilateral_trading_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_residual_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
+                
+            Gurobi.gurobi_set_risk_trading_constr(self.agents, self.model)
+
+            epsilon = 1e-4
+        
+            if not price_as_var:
+                obj = gp.QuadExpr()
+                for agent in self.agents:
+                    obj.add(Gurobi.gurobi_set_objective_quadr_test(agent, self.model))
 
             self.model.setObjective(obj, gp.GRB.MINIMIZE)
             
