@@ -61,6 +61,17 @@ class Gurobi:
         model.update()
 
     @staticmethod
+    def gurobi_add_insurance_var_wht_bound(agent, model):
+
+        for proba in agent.probabilities_ind:
+            model.addVar(lb = 0.0,
+                        ub = float('inf'),
+                        vtype = gp.GRB.CONTINUOUS,
+                        name = f'J_{agent.id}_{proba}')
+
+        model.update()
+
+    @staticmethod
     def gurobi_add_eta_var(agent, model):
         model.addVar(lb = - float('inf'),
                     ub = float('inf'),
@@ -208,6 +219,23 @@ class Gurobi:
             model.update()
 
     @staticmethod
+    def gurobi_add_true_insurance_bound(agent, agents, model):
+        for proba in agent.probabilities_ind:
+            qExpr = gp.QuadExpr()
+            lExpr = gp.LinExpr()
+            
+            qExpr.add(Gurobi.gurobi_quadr_generation(agent, proba, model))
+            qExpr.add(Gurobi.gurobi_quadr_demand(agent, proba, model))
+            lExpr.add(Gurobi.gurobi_trading_sum_calc(agent, proba, agents, model, weights=True))
+
+            lExpr.add(- model.getVarByName(f'eta_{agent.id}'))
+
+            model.addConstr(model.getVarByName(f'J_{agent.id}_{proba}') <= qExpr + lExpr,
+                            name = f'Insurance constraint for agent {agent.id} proba {proba}')
+
+        model.update()
+
+    @staticmethod
     def gurobi_set_risk_trading_constr(agents, model):
         for proba in agents[0].probabilities_ind:
             lExpr = gp.LinExpr()
@@ -228,6 +256,17 @@ class Gurobi:
 
             model.addConstr(lExpr == 0,
                             name = f'Risk trading zero for agent {agent.id} and proba {proba}')
+
+        model.update()
+
+    @staticmethod
+    def nullify_insurance_trading(agent, model):
+        for proba in agent.probabilities_ind:
+            lExpr = gp.LinExpr()
+            lExpr.add(model.getVarByName(f'J_{agent.id}_{proba}'))
+
+            model.addConstr(lExpr == 0,
+                            name = f'Insurance trading zero for agent {agent.id} and proba {proba}')
 
         model.update()
     
@@ -288,7 +327,10 @@ class GurobiSolution(Gurobi, BRGS):
         self.agents = agents
         self.model = model
         
-        if solution_type in ('centralized_pessimistic', 'centralized_optimistic', 'BRGS', 'initial', 'test', 'quadratic_test'):
+        if solution_type in ('centralized_pessimistic', 'centralized_optimistic', 
+                            'BRGS', 'initial', 'test', 'quadratic_test',
+                            'centralized_true_insurance_constraint'):
+
             self.solution_type = solution_type
 
             if solution_type == 'BRGS':
@@ -335,6 +377,55 @@ class GurobiSolution(Gurobi, BRGS):
 
             self.model.setObjective(obj, gp.GRB.MINIMIZE)
 
+        if self.solution_type == 'without_IC':
+            for agent in self.agents:
+                Gurobi.gurobi_add_demand_var(agent, self.model)
+                Gurobi.gurobi_add_generation_var(agent, self.model)
+                Gurobi.gurobi_add_energy_trading_var(agent, self.agents, self.model)
+                Gurobi.gurobi_add_eta_var(agent, self.model)
+                Gurobi.gurobi_add_fin_contracts_var(agent, self.model)
+                Gurobi.gurobi_add_insurance_var(agent, self.model)
+                Gurobi.gurobi_add_residual_var(agent, self.model)    
+                Gurobi.nullify_insurance_trading(agent, self.model)
+                
+
+            for agent in self.agents:
+                Gurobi.gurobi_set_bilateral_trading_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_residual_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
+                
+            Gurobi.gurobi_set_risk_trading_constr(self.agents, self.model)
+        
+            if not price_as_var:
+                obj = gp.LinExpr()
+                for agent in self.agents:
+                    obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))   
+
+        if self.solution_type == 'centralized_true_insurance_constraint':
+            for agent in self.agents:
+                Gurobi.gurobi_add_demand_var(agent, self.model)
+                Gurobi.gurobi_add_generation_var(agent, self.model)
+                Gurobi.gurobi_add_energy_trading_var(agent, self.agents, self.model)
+                Gurobi.gurobi_add_eta_var(agent, self.model)
+                Gurobi.gurobi_add_fin_contracts_var(agent, self.model)
+                Gurobi.gurobi_add_insurance_var_wht_bound(agent, self.model)
+                Gurobi.gurobi_add_residual_var(agent, self.model)
+                
+
+            for agent in self.agents:
+                Gurobi.gurobi_set_bilateral_trading_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_residual_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_add_true_insurance_bound(agent, self.agents, self.model)
+                
+            Gurobi.gurobi_set_risk_trading_constr(self.agents, self.model)
+
+            epsilon = 1e-4
+        
+            if not price_as_var:
+                obj = gp.LinExpr()
+                for agent in self.agents:
+                    obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
             
 
         if self.solution_type == 'centralized_pessimistic':
