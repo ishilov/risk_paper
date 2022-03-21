@@ -234,8 +234,8 @@ class RiskProblemFunctions:
         res = [torch.tensor(0, dtype=float) for proba in agent.probabilities_ind]
 
         for proba in agent.probabilities_ind:
-            res[proba] = ((BasicFunctions.utility(agent)[proba] - agent.w[proba] - agent.eta - agent.u[proba]) ** 2 
-                            if (BasicFunctions.utility(agent)[proba] - agent.w[proba] - agent.eta - agent.u[proba]) > 0 else torch.tensor(0, dtype = float))
+            res[proba] = ((BasicFunctions.utility(agent)[proba] - agent.w[proba] - agent.j[proba] - agent.eta - agent.u[proba]) ** 2 
+                            if (BasicFunctions.utility(agent)[proba] - agent.w[proba] - agent.j[proba] - agent.eta - agent.u[proba]) > 0 else torch.tensor(0, dtype = float))
 
         return res
 
@@ -244,7 +244,7 @@ class RiskProblemFunctions:
         res = [torch.tensor(0, dtype=float) for proba in agent.probabilities_ind]
 
         for proba in agent.probabilities_ind:
-            res[proba] = agent.j[proba] ** 2 if agent.j[proba] <0 else torch.tensor(0, dtype=float)
+            res[proba] = agent.j[proba] ** 2 if agent.j[proba] < 0 else torch.tensor(0, dtype=float)
 
         return res
 
@@ -272,17 +272,23 @@ class RiskProblemFunctions:
 
         for proba in agent.probabilities_ind:
             for agent_2 in range(agent.community_size):
-                res[proba] += agent.w_others[agent_2][proba]
-
+                if agent_2 != agent.id:
+                    res[proba] += agent.w_others[agent_2][proba]
+                
+            res[proba] += agent.w[proba]
             res[proba] = res[proba] ** 2
 
         return res
 
     @staticmethod
-    def risk_utility(agent: TorchPlayer):
-        insurance_term = sum([agent.j[proba] * agent.alpha[proba] for proba in agent.probabilities_ind])
-        contracts_term = sum([agent.w[proba] * agent.gamma[proba] for proba in agent.probabilities_ind])
-        residual_term = 1 / (1 - agent.risk_aversion) * sum([agent.u[proba] * agent.probabilities[proba] for proba in agent.probabilities_ind])
-        eta_term = agent.eta
+    def risk_utility_per_proba(agent: TorchPlayer):
+        res = [torch.tensor(0, dtype=float) for proba in agent.probabilities_ind]
 
-        return insurance_term + contracts_term + residual_term + eta_term
+        for proba in agent.probabilities_ind:
+            insurance_term = agent.j[proba] * agent.alpha[proba]
+            contracts_term = agent.w[proba] * agent.gamma[proba]
+            residual_term = agent.probabilities[proba] / (1 - agent.risk_aversion) * agent.u[proba] 
+
+            res[proba] = insurance_term + contracts_term + residual_term
+
+        return res
