@@ -236,6 +236,17 @@ class Gurobi:
         model.update()
 
     @staticmethod
+    def gurobi_RN_utility(agent, agents, model):
+        qExpr = gp.QuadExpr()
+
+        for proba in agent.probabilities_ind:
+            qExpr.add(agent.probabilities[proba] * Gurobi.gurobi_quadr_generation(agent, proba, model))
+            qExpr.add(agent.probabilities[proba] * Gurobi.gurobi_quadr_demand(agent, proba, model))
+            qExpr.add(agent.probabilities[proba] * Gurobi.gurobi_trading_sum_calc(agent, proba, agents, model, weights=True))
+
+        return qExpr
+
+    @staticmethod
     def gurobi_set_risk_trading_constr(agents, model):
         for proba in agents[0].probabilities_ind:
             lExpr = gp.LinExpr()
@@ -328,7 +339,7 @@ class GurobiSolution(Gurobi, BRGS):
         self.model = model
         
         if solution_type in ('centralized_pessimistic', 'centralized_optimistic', 
-                            'centralized_without_finance',
+                            'centralized_without_finance', 'risk-neutral',
                             'BRGS', 'initial', 'test', 'quadratic_test',
                             'centralized_true_insurance_constraint'):
 
@@ -485,6 +496,24 @@ class GurobiSolution(Gurobi, BRGS):
                     Gurobi.gurobi_add_gamma_price_var(self.model, self.agents[0].probabilities_ind)
                     obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
 
+            self.model.setObjective(obj, gp.GRB.MINIMIZE)
+
+        if self.solution_type == 'risk-neutral':
+            obj = gp.QuadExpr()
+
+            for agent in self.agents:
+                Gurobi.gurobi_add_demand_var(agent, self.model)
+                Gurobi.gurobi_add_generation_var(agent, self.model)
+                Gurobi.gurobi_add_energy_trading_var(agent, self.agents, self.model)
+
+            for agent in self.agents:
+                Gurobi.gurobi_set_bilateral_trading_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
+                
+            for agent in self.agents:    
+                obj_agents = Gurobi.gurobi_RN_utility(agent, self.agents, self.model)
+                obj.add(obj_agents)
+               
             self.model.setObjective(obj, gp.GRB.MINIMIZE)
 
         if self.solution_type == 'centralized_optimistic':
