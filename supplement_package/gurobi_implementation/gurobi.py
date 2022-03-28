@@ -341,7 +341,8 @@ class GurobiSolution(Gurobi, BRGS):
         if solution_type in ('centralized_pessimistic', 'centralized_optimistic', 
                             'centralized_without_finance', 'risk-neutral',
                             'BRGS', 'initial', 'test', 'quadratic_test',
-                            'centralized_true_insurance_constraint'):
+                            'centralized_true_insurance_constraint',
+                            'without_IC'):
 
             self.solution_type = solution_type
 
