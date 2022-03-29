@@ -342,7 +342,7 @@ class GurobiSolution(Gurobi, BRGS):
                             'centralized_without_finance', 'risk-neutral',
                             'BRGS', 'initial', 'test', 'quadratic_test',
                             'centralized_true_insurance_constraint',
-                            'without_IC'):
+                            'without_IC', 'only_IC'):
 
             self.solution_type = solution_type
 
@@ -413,6 +413,28 @@ class GurobiSolution(Gurobi, BRGS):
                 obj = gp.LinExpr()
                 for agent in self.agents:
                     obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))   
+
+        if self.solution_type == 'only_IC':
+            for agent in self.agents:
+                Gurobi.gurobi_add_demand_var(agent, self.model)
+                Gurobi.gurobi_add_generation_var(agent, self.model)
+                Gurobi.gurobi_add_energy_trading_var(agent, self.agents, self.model)
+                Gurobi.gurobi_add_eta_var(agent, self.model)
+                Gurobi.gurobi_add_residual_var(agent, self.model)
+                Gurobi.gurobi_add_fin_contracts_var(agent, self.model)
+                Gurobi.gurobi_add_insurance_var(agent, self.model)
+
+            for agent in self.agents:
+                Gurobi.gurobi_set_bilateral_trading_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_residual_constr(agent, self.agents, self.model)
+                Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
+                Gurobi.nullify_risk_trading(agent, self.model)
+
+            Gurobi.gurobi_set_risk_trading_constr(self.agents, self.model)
+
+            obj = gp.LinExpr()
+            for agent in self.agents:
+                obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
 
 
         if self.solution_type == 'without_IC':
