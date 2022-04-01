@@ -558,17 +558,10 @@ class GurobiSolution(Gurobi, BRGS):
             Gurobi.gurobi_set_risk_trading_constr(self.agents, self.model)
 
             epsilon = 1e-4
-        
-            if not price_as_var:
-                obj = gp.LinExpr()
-                for agent in self.agents:
-                    obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
-            
-            else:
-                obj = gp.QuadExpr()
-                for agent in self.agents:
-                    Gurobi.gurobi_add_gamma_price_var(self.model, self.agents[0].probabilities_ind)
-                    obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
+
+            obj = gp.LinExpr()
+            for agent in self.agents:
+                obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
 
             self.model.setObjective(obj, gp.GRB.MINIMIZE)
 
