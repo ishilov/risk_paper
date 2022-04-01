@@ -103,23 +103,15 @@ class Gurobi:
 
     @staticmethod
     def gurobi_set_objective(agent, model, price_as_var = False):
-        if not price_as_var:
-            lExpr = gp.LinExpr()
-            for proba_ind, proba in enumerate(agent.probabilities):
-                lExpr.add(model.getVarByName(f'W_{agent.id}_{proba_ind}') * agent.gamma[proba_ind] 
-                        + model.getVarByName(f'J_{agent.id}_{proba_ind}') * agent.alpha[proba_ind]
-                        + model.getVarByName(f'u_{agent.id}_{proba_ind}') * proba / (1 - agent.risk_aversion))
 
-            lExpr.add(model.getVarByName(f'eta_{agent.id}'))
+        lExpr = gp.LinExpr()
 
-        else:
-            lExpr = gp.QuadExpr()
-            for proba_ind, proba in enumerate(agent.probabilities):
-                lExpr.add(model.getVarByName(f'W_{agent.id}_{proba_ind}') * model.getVarByName(f'gamma_{proba_ind}')
-                        + model.getVarByName(f'J_{agent.id}_{proba_ind}') * agent.alpha[proba_ind]
-                        + model.getVarByName(f'u_{agent.id}_{proba_ind}') * proba / (1 - agent.risk_aversion))
+        for proba_ind, proba in enumerate(agent.probabilities):
+            lExpr.add(model.getVarByName(f'W_{agent.id}_{proba_ind}') * agent.gamma[proba_ind] 
+                    + model.getVarByName(f'J_{agent.id}_{proba_ind}') * agent.alpha[proba_ind]
+                    + model.getVarByName(f'u_{agent.id}_{proba_ind}') * proba / (1 - agent.risk_aversion))
 
-            lExpr.add(model.getVarByName(f'eta_{agent.id}'))
+        lExpr.add(model.getVarByName(f'eta_{agent.id}'))
 
         return lExpr
 
@@ -409,10 +401,12 @@ class GurobiSolution(Gurobi, BRGS):
 
             Gurobi.gurobi_set_risk_trading_constr(self.agents, self.model)
 
-            if not price_as_var:
-                obj = gp.LinExpr()
-                for agent in self.agents:
-                    obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))   
+
+            obj = gp.LinExpr()
+            for agent in self.agents:
+                obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))   
+
+            self.model.setObjective(obj, gp.GRB.MINIMIZE)
 
         if self.solution_type == 'only_IC':
             for agent in self.agents:
@@ -436,6 +430,8 @@ class GurobiSolution(Gurobi, BRGS):
             for agent in self.agents:
                 obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
 
+            self.model.setObjective(obj, gp.GRB.MINIMIZE)
+
 
         if self.solution_type == 'without_IC':
             for agent in self.agents:
@@ -446,20 +442,21 @@ class GurobiSolution(Gurobi, BRGS):
                 Gurobi.gurobi_add_fin_contracts_var(agent, self.model)
                 Gurobi.gurobi_add_insurance_var(agent, self.model)
                 Gurobi.gurobi_add_residual_var(agent, self.model)    
-                Gurobi.nullify_insurance_trading(agent, self.model)
                 
-
             for agent in self.agents:
+                Gurobi.nullify_insurance_trading(agent, self.model)
                 Gurobi.gurobi_set_bilateral_trading_constr(agent, self.agents, self.model)
                 Gurobi.gurobi_set_residual_constr(agent, self.agents, self.model)
                 Gurobi.gurobi_set_SD_balance_constr(agent, self.agents, self.model)
                 
             Gurobi.gurobi_set_risk_trading_constr(self.agents, self.model)
         
-            if not price_as_var:
-                obj = gp.LinExpr()
-                for agent in self.agents:
-                    obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))   
+            
+            obj = gp.LinExpr()
+            for agent in self.agents:
+                obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))  
+
+            self.model.setObjective(obj, gp.GRB.MINIMIZE) 
 
         if self.solution_type == 'centralized_true_insurance_constraint':
             for agent in self.agents:
@@ -482,10 +479,12 @@ class GurobiSolution(Gurobi, BRGS):
 
             epsilon = 1e-4
         
-            if not price_as_var:
-                obj = gp.LinExpr()
-                for agent in self.agents:
-                    obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
+
+            obj = gp.LinExpr()
+            for agent in self.agents:
+                obj.add(Gurobi.gurobi_set_objective(agent, self.model, price_as_var))
+
+            self.model.setObjective(obj, gp.GRB.MINIMIZE)
             
 
         if self.solution_type == 'centralized_pessimistic':
